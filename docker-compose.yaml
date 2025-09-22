@@ -1,0 +1,72 @@
+﻿version: '3.8'
+
+services:
+  payment:
+    image: payment.web:latest
+    build:
+      context: .
+      dockerfile: ./services/payment/src/Payment.Web/Dockerfile
+    ports:
+      - "8082:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - LOG_FILE_PATH=/var/log/payment/log.txt
+      - ConnectionStrings__PaymentWebDb=Host=db;Database=ikars;Username=postgres;Password=postgres
+      - HttpClientSettings__TerminalServerBaseAddress=http://terminals:8080/
+    volumes:
+      - type: bind
+        source: ./logs 
+        target: /var/log/payment
+    depends_on:
+      - db
+    networks:
+      molotkov:
+        ipv4_address: 10.20.4.6
+  
+  terminals:
+    image: terminals.web:latest
+    build:
+      context: .
+      dockerfile: ./services/terminals/src/Terminals.Web/Dockerfile
+    ports:
+      - "8081:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    networks:
+      molotkov:
+        ipv4_address: 10.20.4.10
+  
+  statistic_web:
+    image: nginx:alpine
+    volumes:
+      - ./services/statistic/web:/usr/share/nginx/html
+    ports: 
+      - "8080:80"
+    networks:
+      molotkov:
+        ipv4_address: 10.20.4.12
+
+  db:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_DB: ikars
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      molotkov:
+        ipv4_address: 10.20.4.3
+
+volumes:
+  postgres_data:
+    
+networks:
+  molotkov:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.20.4.0/24

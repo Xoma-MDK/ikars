@@ -1,0 +1,166 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Statistic</title>
+    <link
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        background-color: #f8f9fa;
+        padding: 20px;
+      }
+      .container {
+        background-color: #ffffff;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+      }
+      label {
+        font-weight: bold;
+      }
+      #myChart {
+        margin-top: 20px;
+      }
+    </style>
+    <script>
+      let myChart;
+
+      document.addEventListener("DOMContentLoaded", (event) => {
+        const ctx = document.getElementById("myChart").getContext("2d");
+
+        myChart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: [],
+            datasets: [
+              {
+                label: "Число проданных билетов",
+                data: [],
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+              },
+            },
+          },
+        });
+      });
+
+      async function populateTerminals() {
+        const selectElement = document.getElementById("terminalSelector");
+
+        try {
+          const response = await fetch("http://localhost:3000/terminals");
+          if (!response.ok) {
+            throw new Error("Сеть не отвечает");
+          }
+
+          const options = await response.json();
+
+          options
+            .map((op) => op.id)
+            .forEach((option) => {
+              const newOption = document.createElement("option");
+              newOption.value = option;
+              newOption.textContent = option;
+              selectElement.appendChild(newOption);
+            });
+        } catch (error) {
+          console.error("Ошибка при загрузке данных:", error);
+        }
+      }
+
+      async function updateChart() {
+        const terminal = document.getElementById("terminalSelector").value;
+        const dateFrom = document.getElementById("datePickerFrom").value;
+        const dateTo = document.getElementById("datePickerTo").value;
+
+        if (!terminal || !dateFrom || !dateTo) {
+          console.error("Пожалуйста, выберите терминал и даты.");
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `http://localhost:8082/history/${terminal}?dateFrom=${dateFrom}&dateTo=${dateTo}`
+          );
+          if (!response.ok) {
+            throw new Error("Сеть не отвечает");
+          }
+
+          const data = await response.json();
+
+          const chartsData = {
+            date: data.dayHistories.map((v) => v.date),
+            tickets: data.dayHistories.map((v) => v.purchasedTickets),
+          };
+
+          myChart.data.labels = chartsData.date;
+          myChart.data.datasets[0].data = chartsData.tickets;
+          myChart.update();
+        } catch (error) {
+          console.error("Ошибка при загрузке данных для диаграммы:", error);
+        }
+      }
+
+      window.onload = () => {
+        populateTerminals();
+        document
+          .getElementById("terminalSelector")
+          .addEventListener("change", updateChart);
+        document
+          .getElementById("datePickerFrom")
+          .addEventListener("change", updateChart);
+        document
+          .getElementById("datePickerTo")
+          .addEventListener("change", updateChart);
+      };
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <h2 class="text-center">Статистика</h2>
+      <div class="form-group">
+        <label for="terminalSelector">Терминал</label>
+        <select id="terminalSelector" class="form-control">
+          <option value="">Выберите терминал</option>
+          <!-- Добавьте опции терминалов здесь -->
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="datePickerFrom">Дата от:</label>
+        <input
+          type="date"
+          id="datePickerFrom"
+          name="datePickerFrom"
+          class="form-control"
+        />
+      </div>
+      <div class="form-group">
+        <label for="datePickerTo">Дата до:</label>
+        <input
+          type="date"
+          id="datePickerTo"
+          name="datePickerTo"
+          class="form-control"
+        />
+      </div>
+      <div>
+        <canvas id="myChart"></canvas>
+      </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  </body>
+</html>

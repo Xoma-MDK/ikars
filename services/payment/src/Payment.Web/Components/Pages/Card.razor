@@ -1,0 +1,109 @@
+﻿@page "/card/{CardId:guid}"
+@using Payment.Web.Application.Terminals
+@using Payment.Web.Application.Transactions
+@using Payment.Web.Application.Transactions.Exceptions
+@rendermode InteractiveServer
+@inject ITransactionService TransactionService
+@inject ITerminalService TerminalService
+
+<PageTitle>Card controller</PageTitle>
+
+<h1>Карта: @CardId</h1>
+
+@if (_loading)
+{
+    <p>
+        <em>Loading...</em>
+    </p>
+}
+else
+{
+    <div class="">
+        <div class="mb-4">
+            <label for="terminalSelect">Ваш терминал</label>
+            <select id="terminalSelect" class="form-control" @bind="_selectedTerminalId">
+                @foreach (var id in _terminalsId)
+                {
+                    <option value="@id">@id</option>
+                }
+            </select>
+        </div>
+        <p role="status">Текущий баланс: @_currentBalance</p>
+        <div class="mb-4">
+            <div class="form-floating mb-3">
+                <input id="amountInput" class="form-control" type="text" @bind="_userInput" placeholder="Введите сумму пополнения"/>
+                <label for="amountInput">Сумма пополнения</label>
+            </div>
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <p class="alert-danger">@_error</p>
+            }
+            <button class="btn btn-primary mx-2" @onclick="AddMoney">Пополнить счет</button>
+        </div>
+        <button class="btn btn-danger" @onclick="BuyTicket">Купить билет</button>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid CardId { get; set; }
+
+    private string _userInput = string.Empty;
+    private int _currentBalance;
+    private bool _loading = true;
+    private string _error = string.Empty;
+
+    private Guid _selectedTerminalId;
+    private IEnumerable<Guid> _terminalsId = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var csr = new CancellationTokenSource();
+        _currentBalance = await TransactionService.GetCurrentBalance(CardId, csr.Token);
+        _terminalsId = await TerminalService.GetTerminalIdsAsync(csr.Token);
+        _loading = false;
+    }
+
+    private async Task AddMoney()
+    {
+        var csr = new CancellationTokenSource();
+        _error = string.Empty;
+
+        if (string.IsNullOrEmpty(_userInput))
+        {
+            return;
+        }
+
+        int amount;
+        try
+        {
+            amount = Convert.ToInt32(_userInput);
+        }
+        catch (FormatException)
+        {
+            _error = "Пожалуйста, введите целочисленное значение.";
+            return;
+        }
+
+        await TransactionService.AddMoney(CardId, amount, csr.Token);
+        _currentBalance = await TransactionService.GetCurrentBalance(CardId, csr.Token);
+
+        _userInput = "";
+    }
+
+    private async Task BuyTicket()
+    {
+        var csr = new CancellationTokenSource();
+        try
+        {
+            await TransactionService.BuyTicket(CardId, _selectedTerminalId, csr.Token);
+        }
+        catch (NotEnoughMoney)
+        {
+            _error = "Недостаточно средств.";
+            return;
+        }
+
+        _currentBalance = await TransactionService.GetCurrentBalance(CardId, csr.Token);
+    }
+
+}

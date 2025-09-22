@@ -1,0 +1,38 @@
+﻿@page "/"
+@using Payment.Web.Application.GetCards
+@inject IGetCardService GetCardService
+
+<PageTitle>Home</PageTitle>
+
+<h1>Выбирите карту</h1>
+
+@if (_loading)
+{
+    <p>Загрузка...</p>
+}
+else
+{
+    <ul>
+        @foreach (var card in _cards)
+        {
+            <li>
+                <NavLink href=@($"/card/{card}")>
+                    <span>@card</span>
+                </NavLink>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+
+    private IEnumerable<Guid> _cards = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cards = await GetCardService.GetAllCardsIdAsync();
+        _loading = false;
+    }
+
+}
