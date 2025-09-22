@@ -44,7 +44,7 @@ jobs:
       
       - name: Build Docker image for Terminals.Web
         run: |
-          docker build -t xomamdk/ikar.terminals:latest -f ./services/payment/src/Terminals.Web/Dockerfile .
+          docker build -t xomamdk/ikar.terminals:latest -f ./services/terminals/src/Terminals.Web/Dockerfile .
           
       - name: Log in to Docker Hub
         uses: docker/login-action@v1
