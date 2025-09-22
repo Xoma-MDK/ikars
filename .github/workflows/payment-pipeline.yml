@@ -58,4 +58,4 @@ jobs:
       
       - name: Push Docker image Terminals.Web
         run: |
-          docker push xomamdk/ikar.payment:latest
+          docker push xomamdk/ikar.terminals:latest
